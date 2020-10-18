@@ -1,23 +1,23 @@
 package se.coolaganget.friendzip.miserycode;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 import se.coolaganget.friendzip.model.User;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@Component
 public class ProDataBase {
 
-    @Bean(name="user_database")
-    public Map<String, User> UserProDatabase() {
-        return new HashMap<>();
+    private static Map<String, User> userProDatabase = new HashMap<>();
+    private static Map<String, String> accessTokenProDatabase = new HashMap<>();
+
+
+    public static Map<String, User> getUserProDatabase() {
+        return userProDatabase;
     }
 
-    @Bean(name="token_database")
-    public Map<String, String> accessTokenProDatabase() {
-        return new HashMap<>();
+    public static Map<String, String> getAccessTokenProDatabase() {
+        return accessTokenProDatabase;
     }
 
 }

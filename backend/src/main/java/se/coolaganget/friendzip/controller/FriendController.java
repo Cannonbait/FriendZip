@@ -1,10 +1,9 @@
 package se.coolaganget.friendzip.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import se.coolaganget.friendzip.miserycode.ProDataBase;
 import se.coolaganget.friendzip.model.Friend;
 import se.coolaganget.friendzip.model.User;
 
@@ -16,14 +15,10 @@ import java.util.stream.Collectors;
 @Controller
 public class FriendController {
 
-    @Qualifier("user_database")
-    @Autowired
-    private Map<String, User> connectedUsers;
-
     @GetMapping("/friends")
     @ResponseBody
     public List<Friend> getUsers() throws IOException {
-        return connectedUsers
+        return ProDataBase.getUserProDatabase()
                 .entrySet()
                 .stream()
                 .map(this::createFriend)

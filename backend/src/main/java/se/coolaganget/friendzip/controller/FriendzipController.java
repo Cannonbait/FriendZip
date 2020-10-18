@@ -12,10 +12,10 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.io.IOException;
@@ -27,22 +27,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import se.coolaganget.friendzip.config.OAuthProperties;
+import se.coolaganget.friendzip.miserycode.ProDataBase;
 import se.coolaganget.friendzip.model.*;
 
 @Controller
 public class FriendzipController {
 
     private final OAuthProperties oAuthProperties;
-
-    @Qualifier("user_database")
-    @Autowired
-    private Map<String, User> connectedUsers;
-
-    //These time out in like one hour, so yeah. We need em for now though, for requesting for peers
-    @Qualifier("token_database")
-    @Autowired
-    private Map<String, String> accessTokens;
-
 
     FriendzipController(OAuthProperties oAuthProperties) {
         this.oAuthProperties = oAuthProperties;
@@ -57,27 +48,31 @@ public class FriendzipController {
         GoogleOAuthResponse googleOAuthResponse = objectMapper.readValue(responseData, GoogleOAuthResponse.class);
 
         User user = new User(googleOAuthResponse.getIdToken());
-        if(!connectedUsers.containsKey(user.getEmail())){
-            connectedUsers.put(user.getEmail(), user);
-        }
+        System.out.println(user.getEmail());
 
-        accessTokens.put(user.getEmail(), googleOAuthResponse.getAccessToken());
+        ProDataBase.getUserProDatabase().put(user.getEmail(), user);
+        ProDataBase.getAccessTokenProDatabase().put(user.getEmail(), googleOAuthResponse.getAccessToken());
 
        return responseData;
     }
 
-    @PostMapping("/zip")
+    @PostMapping(value = "/zip", consumes = "application/json", produces = "application/json")
     @ResponseBody
-    public List<Slot> zipFriendsCalendar(String requesterId, String peerId){
-        User requestingUser = connectedUsers.get(requesterId);
-        User peerUser = connectedUsers.get(peerId);
+    public List<Slot> zipFriendsCalendar(@RequestBody ZipRequest zipRequest){
+
+        System.out.println(ProDataBase.getUserProDatabase().size());
+        ProDataBase.getUserProDatabase().keySet().forEach(item -> System.out.println(item));
+        System.out.println("RequesterID: " + zipRequest.getRequesterId());
+
+        User requestingUser = ProDataBase.getUserProDatabase().get(zipRequest.getRequesterId());
+        User peerUser = ProDataBase.getUserProDatabase().get(zipRequest.getPeerId());
 
         String requesterEventsUrl = eventRequestUrlForUser(requestingUser);
         String peerEventsUrl = eventRequestUrlForUser(peerUser);
 
         try {
-            String requesterEventsJson = retrieveEventList(requesterEventsUrl, accessTokens.get(requestingUser.getEmail()));
-            String peerEventsJson = retrieveEventList(peerEventsUrl, accessTokens.get(peerUser.getEmail()));
+            String requesterEventsJson = retrieveEventList(requesterEventsUrl, ProDataBase.getAccessTokenProDatabase().get(requestingUser.getEmail()));
+            String peerEventsJson = retrieveEventList(peerEventsUrl, ProDataBase.getAccessTokenProDatabase().get(peerUser.getEmail()));
 
             StupidCalendar requesterCalender = getUserStupidCalendar(requesterEventsJson);
             StupidCalendar peerCalendar = getUserStupidCalendar(peerEventsJson);

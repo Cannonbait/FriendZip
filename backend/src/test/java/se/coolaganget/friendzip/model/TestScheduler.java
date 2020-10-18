@@ -32,10 +32,13 @@ public class TestScheduler {
         List<Calendar> cals = new ArrayList<>();
         cals.add(stinas);
         cals.add(eriks);
-        Scheduler s = new Scheduler();
+
+        List<Rule> rules = new ArrayList<>();
+        rules.add(Rule.NightRule());
+        Scheduler s = new Scheduler(rules);
         List<Slot> matches =  s.schedule(cals, LocalDateTime.of(2020, 10, 19, 9, 0),
-                LocalDateTime.of(2020, 10, 19, 20, 0),
-                Duration.ofMinutes(30));
+                LocalDateTime.of(2020, 10, 20, 11, 0),
+                Duration.ofHours(4));
 
 
         System.out.println(matches);

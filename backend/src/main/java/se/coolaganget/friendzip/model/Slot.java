@@ -7,4 +7,6 @@ public interface Slot {
     LocalDateTime getStartTime();
 
     Duration getDuration();
+
+    LocalDateTime getEndTime();
 }

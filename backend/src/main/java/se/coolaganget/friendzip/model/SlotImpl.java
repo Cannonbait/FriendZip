@@ -5,10 +5,10 @@ import java.time.LocalDateTime;
 
 public class SlotImpl implements Slot {
     private LocalDateTime startTime;
-    private Duration duration;
+    private LocalDateTime endTime;
     public SlotImpl(LocalDateTime startTime, Duration duration) {
         this.startTime = startTime;
-        this.duration = duration;
+        this.endTime = startTime.plus(duration);
     }
 
     @Override
@@ -18,11 +18,19 @@ public class SlotImpl implements Slot {
 
     @Override
     public Duration getDuration() {
-        return duration;
+        return Duration.between(startTime, endTime);
+    }
+
+    @Override
+    public LocalDateTime getEndTime() {
+        return endTime;
     }
 
     @Override
     public String toString() {
-        return "Slot:\n" + startTime.toString() + "\n" + "Duration:\n" + duration.toString() + "\n";
+        return "SlotImpl{" +
+                "startTime=" + startTime +
+                ", endTime=" + endTime +
+                '}';
     }
 }

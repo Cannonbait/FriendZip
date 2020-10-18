@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 
 import "./App.css";
+import { useQuery } from "react-query";
 
 const CLIENT_ID = process.env.REACT_APP_CLIENT_ID!;
 
@@ -12,9 +13,23 @@ const SCOPES = [
   "https://www.googleapis.com/auth/calendar.readonly",
 ].join(" ");
 
+function getUsers(): Promise<any> {
+  return fetch("http://localhost:8080/users").then((r) => r.json());
+}
+
 function SuccessPage() {
   // TODO Call backend to fetch calendars
-  return <div>You are signed in!</div>;
+  const data = useQuery("users", getUsers);
+  console.log(data.data);
+  return (
+    <div>
+      You are signed in!
+      <div>Please select the calendar you want to plan around: </div>
+      <select>
+        <option>Tjena</option>
+      </select>
+    </div>
+  );
 }
 
 function Callback() {

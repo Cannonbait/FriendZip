@@ -6,7 +6,6 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 public class User {
 
     DecodedJWT jwtToken;
-
     public User(String jwtToken) {
         this.jwtToken = JWT.decode(jwtToken);
     }
@@ -14,5 +13,4 @@ public class User {
     public String getEmail() {
         return jwtToken.getClaim("email").asString();
     }
-
 }

@@ -1,8 +1,10 @@
 package se.coolaganget.friendzip.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -17,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import se.coolaganget.friendzip.config.OAuthProperties;
+import se.coolaganget.friendzip.model.GoogleOAuthResponse;
+import se.coolaganget.friendzip.model.User;
 
 @Controller
 public class FriendzipController {
@@ -31,10 +35,42 @@ public class FriendzipController {
     @PostMapping("/authenticate")
     @ResponseBody
     public String authenticate(String accessCode) throws IOException {
-       return makePost("https://oauth2.googleapis.com/token", accessCode);
+       String responseData =  getAccessToken("https://oauth2.googleapis.com/token", accessCode);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        GoogleOAuthResponse googleOAuthResponse = objectMapper.readValue(responseData, GoogleOAuthResponse.class);
+
+        User user = new User(googleOAuthResponse.getIdToken());
+        String calendarURL = "https://www.googleapis.com/calendar/v3/calendars/" + user.getEmail() + "/events";
+
+        System.out.println(calendarURL);
+        retrieveEventList(calendarURL, googleOAuthResponse.getAccessToken());
+
+
+       return responseData;
     }
 
-    private String makePost(String url, String accessCode) throws IOException {
+    private String retrieveEventList(String url, String accessToken) throws IOException {
+        CloseableHttpClient client = HttpClients.createDefault();
+
+        url += "?timeMin=2020-10-18T10%3a00%3a00%2b0200";
+
+        System.out.println(url);
+
+        HttpGet httpGet = new HttpGet(url);
+
+        List<NameValuePair> params = new ArrayList<>();
+        httpGet.addHeader("Authorization", "Bearer " + accessToken);
+        CloseableHttpResponse response = client.execute(httpGet);
+        String jsonString = EntityUtils.toString(response.getEntity());
+        System.out.println(jsonString);
+
+        client.close();
+
+        return jsonString;
+    }
+
+    private String getAccessToken(String url, String accessCode) throws IOException {
 
         CloseableHttpClient client = HttpClients.createDefault();
         HttpPost httpPost = new HttpPost(url);
@@ -49,6 +85,7 @@ public class FriendzipController {
         httpPost.setEntity(new UrlEncodedFormEntity(params));
         CloseableHttpResponse response = client.execute(httpPost);
         String jsonString = EntityUtils.toString(response.getEntity());
+        System.out.println(jsonString);
         client.close();
 
         return jsonString;

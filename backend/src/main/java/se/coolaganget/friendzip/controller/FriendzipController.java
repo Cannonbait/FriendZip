@@ -10,44 +10,106 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 import se.coolaganget.friendzip.config.OAuthProperties;
-import se.coolaganget.friendzip.model.GoogleOAuthResponse;
-import se.coolaganget.friendzip.model.User;
+import se.coolaganget.friendzip.model.*;
 
 @Controller
 public class FriendzipController {
 
     private final OAuthProperties oAuthProperties;
 
+    private final Map<String, User> connectedUsers;
+
+    //These time out in like one hour, so yeah. We need em for now though, for requesting for peers
+    private final Map<String, String> accessTokens;
+
 
     FriendzipController(OAuthProperties oAuthProperties) {
         this.oAuthProperties = oAuthProperties;
+        this.connectedUsers = new HashMap();
+        this.accessTokens = new HashMap<>();
     }
 
     @PostMapping("/authenticate")
     @ResponseBody
     public String authenticate(String accessCode) throws IOException {
-       String responseData =  getAccessToken("https://oauth2.googleapis.com/token", accessCode);
+       String responseData = getAccessToken("https://oauth2.googleapis.com/token", accessCode);
 
         ObjectMapper objectMapper = new ObjectMapper();
         GoogleOAuthResponse googleOAuthResponse = objectMapper.readValue(responseData, GoogleOAuthResponse.class);
 
         User user = new User(googleOAuthResponse.getIdToken());
-        String calendarURL = "https://www.googleapis.com/calendar/v3/calendars/" + user.getEmail() + "/events";
+        if(!connectedUsers.containsKey(user.getEmail())){
+            connectedUsers.put(user.getEmail(), user);
+        }
 
-        System.out.println(calendarURL);
-        retrieveEventList(calendarURL, googleOAuthResponse.getAccessToken());
-
+        accessTokens.put(user.getEmail(), googleOAuthResponse.getAccessToken());
 
        return responseData;
+    }
+
+    @PostMapping("/zip")
+    @ResponseBody
+    public List<Slot> zipFriendsCalendar(String requesterId, String peerId){
+        User requestingUser = connectedUsers.get(requesterId);
+        User peerUser = connectedUsers.get(peerId);
+
+        String requesterEventsUrl = eventRequestUrlForUser(requestingUser);
+        String peerEventsUrl = eventRequestUrlForUser(peerUser);
+
+        try {
+            String requesterEventsJson = retrieveEventList(requesterEventsUrl, accessTokens.get(requestingUser.getEmail()));
+            String peerEventsJson = retrieveEventList(peerEventsUrl, accessTokens.get(peerUser.getEmail()));
+
+            StupidCalendar requesterCalender = getUserStupidCalendar(requesterEventsJson);
+            StupidCalendar peerCalendar = getUserStupidCalendar(peerEventsJson);
+
+            return new Scheduler(Arrays.asList(Rule.NightRule())).schedule(Arrays.asList(requesterCalender, peerCalendar),
+                    LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC),
+                    LocalDateTime.ofInstant(Instant.now().plus(90, ChronoUnit.DAYS), ZoneOffset.UTC),
+                    Duration.ofHours(2));
+
+        } catch (IOException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private StupidCalendar getUserStupidCalendar(String requesterEventsJson) {
+        JSONObject requesterAcl = new JSONObject(requesterEventsJson);
+        JSONArray itemArray = requesterAcl.getJSONArray("items");
+
+        StupidCalendar calendar = new StupidCalendar();
+
+        for(int i = 0; i < itemArray.length(); i++){
+            String startTime = itemArray.getJSONObject(i).getJSONObject("start").getString("dateTime");
+            String endTime = itemArray.getJSONObject(i).getJSONObject("end").getString("dateTime");
+
+            LocalDateTime startTimeDate = LocalDateTime.ofInstant(Instant.parse(startTime), ZoneOffset.UTC);
+            LocalDateTime endTimeDate = LocalDateTime.ofInstant(Instant.parse(endTime), ZoneOffset.UTC);
+
+            Duration eventDuration = Duration.between(startTimeDate, endTimeDate);
+            calendar.addNewBusyTime(new SlotImpl(startTimeDate, eventDuration));
+        }
+
+        return calendar;
+    }
+
+    private String eventRequestUrlForUser(User user){
+        return "https://www.googleapis.com/calendar/v3/calendars/" + user.getEmail() + "/events";
     }
 
     private String retrieveEventList(String url, String accessToken) throws IOException {
@@ -59,7 +121,6 @@ public class FriendzipController {
 
         HttpGet httpGet = new HttpGet(url);
 
-        List<NameValuePair> params = new ArrayList<>();
         httpGet.addHeader("Authorization", "Bearer " + accessToken);
         CloseableHttpResponse response = client.execute(httpGet);
         String jsonString = EntityUtils.toString(response.getEntity());

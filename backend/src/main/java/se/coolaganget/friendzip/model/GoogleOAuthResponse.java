@@ -14,15 +14,6 @@ public class GoogleOAuthResponse {
     private String tokenType;
     @JsonProperty("id_token")
     private String idToken;
-
-    public String getRefreshToken() {
-        return refreshToken;
-    }
-
-    public void setRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
-    }
-
     @JsonProperty("refresh_token")
     private String refreshToken;
 
@@ -64,5 +55,13 @@ public class GoogleOAuthResponse {
 
     public void setIdToken(String idToken) {
         this.idToken = idToken;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 }

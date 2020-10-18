@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import jwtDecode from "jwt-decode";
+import { parseISO, format } from "date-fns";
 
 import "./App.css";
 import { useMutation, useQuery } from "react-query";
@@ -35,7 +36,14 @@ function sendPlanRequest(
   }).then((r) => r.json());
 }
 
-interface PlansResponse {}
+type PlansResponse = Slot[];
+
+interface Slot {
+  startDate: string;
+  endDate: string;
+}
+
+const DATE_FORMAT = "EEE HH:mm";
 
 function SuccessPage() {
   const [friendId, setFriendId] = useState<string | null>(null);
@@ -56,11 +64,23 @@ function SuccessPage() {
         friendId
       );
       setResponse(plansResponse);
-      console.log(plansResponse);
-
       setSubmitting(false);
     }
   };
+
+  if (response) {
+    return (
+      <div>
+        <h3>Possible timeslots:</h3>
+        {response.map((slot) => (
+          <div key={slot.startDate}>
+            {format(parseISO(slot.startDate), DATE_FORMAT)} -{" "}
+            {format(parseISO(slot.endDate), DATE_FORMAT)}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -30,17 +30,17 @@ function sendPlanRequest(
   userId: string,
   friendId: string
 ): Promise<PlansResponse> {
-  return fetch("http://localhost:8080/alskdh", {
+  return fetch("http://localhost:8080/zip", {
     method: "POST",
-    body: JSON.stringify({ userId, friendId }),
+    body: JSON.stringify({ requesterId: userId, peerId: friendId }),
   }).then((r) => r.json());
 }
 
 type PlansResponse = Slot[];
 
 interface Slot {
-  startDate: string;
-  endDate: string;
+  startTime: string;
+  endTime: string;
 }
 
 const DATE_FORMAT = "EEE HH:mm";
@@ -65,6 +65,8 @@ function SuccessPage() {
       );
       setResponse(plansResponse);
       setSubmitting(false);
+    } else {
+      console.log({ userId, accessToken, friendId });
     }
   };
 
@@ -73,9 +75,9 @@ function SuccessPage() {
       <div>
         <h3>Possible timeslots:</h3>
         {response.map((slot) => (
-          <div key={slot.startDate}>
-            {format(parseISO(slot.startDate), DATE_FORMAT)} -{" "}
-            {format(parseISO(slot.endDate), DATE_FORMAT)}
+          <div key={slot.startTime}>
+            {format(parseISO(slot.startTime), DATE_FORMAT)} -{" "}
+            {format(parseISO(slot.endTime), DATE_FORMAT)}
           </div>
         ))}
       </div>
@@ -87,6 +89,7 @@ function SuccessPage() {
       You are signed in!
       <div>Please select a friend: </div>
       <select onChange={(event) => setFriendId(event.target.value)}>
+        <option>---</option>
         {data?.map((friend) => {
           return (
             <option value={friend.id} key={friend.id}>
@@ -112,9 +115,12 @@ function Callback() {
         }
       ).then((r) => r.json());
 
-      const token = jwtDecode(tokenResponse.id_token) as { sub: string };
+      const token = jwtDecode(tokenResponse.id_token) as {
+        sub: string;
+        email: string;
+      };
 
-      window.localStorage.setItem("user_id", token.sub);
+      window.localStorage.setItem("user_id", token.email);
       window.localStorage.setItem("token", tokenResponse.access_token);
       window.location.href = "/success";
     };
@@ -147,7 +153,7 @@ function UnauthorizedUser() {
   );
 }
 
-function App() {
+export function App() {
   return (
     <Router>
       <Switch>
@@ -164,5 +170,3 @@ function App() {
     </Router>
   );
 }
-
-export default App;

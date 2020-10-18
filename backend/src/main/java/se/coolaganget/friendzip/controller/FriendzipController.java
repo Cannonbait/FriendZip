@@ -12,6 +12,8 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -32,16 +34,18 @@ public class FriendzipController {
 
     private final OAuthProperties oAuthProperties;
 
-    private final Map<String, User> connectedUsers;
+    @Qualifier("user_database")
+    @Autowired
+    private Map<String, User> connectedUsers;
 
     //These time out in like one hour, so yeah. We need em for now though, for requesting for peers
-    private final Map<String, String> accessTokens;
+    @Qualifier("token_database")
+    @Autowired
+    private Map<String, String> accessTokens;
 
 
     FriendzipController(OAuthProperties oAuthProperties) {
         this.oAuthProperties = oAuthProperties;
-        this.connectedUsers = new HashMap();
-        this.accessTokens = new HashMap<>();
     }
 
     @PostMapping("/authenticate")
@@ -80,7 +84,7 @@ public class FriendzipController {
 
             return new Scheduler(Arrays.asList(Rule.NightRule())).schedule(Arrays.asList(requesterCalender, peerCalendar),
                     LocalDateTime.ofInstant(Instant.now(), ZoneOffset.UTC),
-                    LocalDateTime.ofInstant(Instant.now().plus(90, ChronoUnit.DAYS), ZoneOffset.UTC),
+                    LocalDateTime.ofInstant(Instant.now().plus(14, ChronoUnit.DAYS), ZoneOffset.UTC),
                     Duration.ofHours(2));
 
         } catch (IOException e) {
@@ -94,16 +98,21 @@ public class FriendzipController {
 
         StupidCalendar calendar = new StupidCalendar();
 
-        for(int i = 0; i < itemArray.length(); i++){
-            String startTime = itemArray.getJSONObject(i).getJSONObject("start").getString("dateTime");
-            String endTime = itemArray.getJSONObject(i).getJSONObject("end").getString("dateTime");
 
-            LocalDateTime startTimeDate = LocalDateTime.ofInstant(Instant.parse(startTime), ZoneOffset.UTC);
-            LocalDateTime endTimeDate = LocalDateTime.ofInstant(Instant.parse(endTime), ZoneOffset.UTC);
+            for(int i = 0; i < itemArray.length(); i++){
+                try {
+                    String startTime = itemArray.getJSONObject(i).getJSONObject("start").getString("dateTime");
+                    String endTime = itemArray.getJSONObject(i).getJSONObject("end").getString("dateTime");
 
-            Duration eventDuration = Duration.between(startTimeDate, endTimeDate);
-            calendar.addNewBusyTime(new SlotImpl(startTimeDate, eventDuration));
-        }
+                    LocalDateTime startTimeDate = LocalDateTime.ofInstant(Instant.parse(startTime), ZoneOffset.UTC);
+                    LocalDateTime endTimeDate = LocalDateTime.ofInstant(Instant.parse(endTime), ZoneOffset.UTC);
+
+                    Duration eventDuration = Duration.between(startTimeDate, endTimeDate);
+                    calendar.addNewBusyTime(new SlotImpl(startTimeDate, eventDuration));
+                } catch (Exception e) {
+                    System.out.println("Found a whole day event, get a fokkin life");
+                }
+            }
 
         return calendar;
     }

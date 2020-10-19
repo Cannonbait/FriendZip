@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
+import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import jwtDecode from "jwt-decode";
-import { parseISO, format } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 import "./App.css";
-import { useMutation, useQuery } from "react-query";
+import { useQuery } from "react-query";
 import * as queryString from "querystring";
+import { Loader } from "./Loading";
 
 const CLIENT_ID = process.env.REACT_APP_CLIENT_ID!;
 
@@ -48,6 +49,10 @@ interface Slot {
 
 const DATE_FORMAT = "EEE HH:mm";
 
+function formatDateString(datestring: string) {
+  return format(parseISO(datestring), DATE_FORMAT);
+}
+
 function SuccessPage() {
   const [friendId, setFriendId] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -76,33 +81,48 @@ function SuccessPage() {
   if (response) {
     return (
       <div>
+        <h1>FriendZip</h1>
         <h3>Possible timeslots:</h3>
-        {response.map((slot) => (
-          <div key={slot.startTime}>
-            {format(parseISO(slot.startTime), DATE_FORMAT)} -{" "}
-            {format(parseISO(slot.endTime), DATE_FORMAT)}
-          </div>
-        ))}
+        <ul style={{ fontVariant: "tabular-nums" }}>
+          {response.map((slot) => (
+            <li key={slot.startTime}>
+              {formatDateString(slot.startTime)}
+              {" - "}
+              {formatDateString(slot.endTime)}
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
 
   return (
     <div>
-      You are signed in!
-      <div>Please select a friend: </div>
-      <select onChange={(event) => setFriendId(event.target.value)}>
-        <option>---</option>
-        {data?.map((friend) => {
-          return (
-            <option value={friend.id} key={friend.id}>
-              {friend.name}
-            </option>
-          );
-        })}
-      </select>
-      {isSubmitting && "IsSubmittingBoi!!!"}
-      <button onClick={handleSubmit}>Make plans!</button>
+      <h1>FriendZip</h1>
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <>
+          <div>Please select a friend:</div>
+          <select onChange={(event) => setFriendId(event.target.value)}>
+            <option>---</option>
+            {data?.map((friend) => {
+              return (
+                <option value={friend.id} key={friend.id}>
+                  {friend.name}
+                </option>
+              );
+            })}
+          </select>
+        </>
+      )}
+      {isSubmitting ? (
+        <div>
+          <Loader />
+        </div>
+      ) : (
+        <button onClick={handleSubmit}>Make plans!</button>
+      )}
     </div>
   );
 }
@@ -129,13 +149,14 @@ function Callback() {
     };
     fn();
   }, []);
-  return <div>Callback</div>;
+
+  return <Loader />;
 }
 
 function UnauthorizedUser() {
   return (
     <div>
-      <div>Please sign in</div>
+      <h1>FriendZip</h1>
       <div>
         <button
           onClick={() => {

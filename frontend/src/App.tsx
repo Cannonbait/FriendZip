@@ -32,6 +32,9 @@ function sendPlanRequest(
 ): Promise<PlansResponse> {
   return fetch("http://localhost:8080/zip", {
     method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
     body: JSON.stringify({ requesterId: userId, peerId: friendId }),
   }).then((r) => r.json());
 }
